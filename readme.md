@@ -3,7 +3,7 @@ Excercise in constructing a wireframe/minimuim viable product for a future full 
 
 **Link to project:** https://wiplayer.netlify.app/
 
-![](https://github.com/codebymv/wiplayer/blob/main/wiplayer.gif)
+![](https://github.com/codebymv/WIPlayer/blob/main/images/wiplayer.gif)
 
 ## How It's Made:
 

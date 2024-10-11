@@ -1,4 +1,4 @@
-# STAR WORDS: An Exciting Media Player for WIP Song Ideas
+# wiPlayer: An Exciting Media Player for WIP Song Ideas
 Excercise in constructing a wireframe/minimuim viable product for a future full stack media player. Many music-responsive elements in a sleek modern design meant for an engaging user experience.
 
 **Link to project:** https://wiplayer.netlify.app/

@@ -1,5 +1,6 @@
 const { getSignedUrl, objectExists } = require('./utils/s3');
-require('dotenv').config();
+const { successResponse, errorResponse } = require('./utils/response-helpers');
+const config = require('../../config');
 
 exports.handler = async (event, context) => {
   // Extract the key from the path parameter
@@ -8,10 +9,6 @@ exports.handler = async (event, context) => {
   
   console.log(`Stream request received for path: ${path}`);
   console.log(`Extracted key: ${key}`);
-  console.log('S3 bucket name:', process.env.S3_BUCKET_NAME);
-  console.log('AWS region:', process.env.WIPLAYER_AWS_REGION);
-  console.log('AWS key exists:', !!process.env.WIPLAYER_AWS_KEY_ID);
-  console.log('AWS secret exists:', !!process.env.WIPLAYER_AWS_SECRET);
   
   // Handle potential URL encoding in the path
   try {
@@ -37,83 +34,38 @@ exports.handler = async (event, context) => {
     
     if (!fileExists) {
       console.error(`File not found in S3: ${filename}`);
-      return {
-        statusCode: 404,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          error: 'File not found',
-          message: `The requested file "${filename}" was not found in S3 bucket "${process.env.S3_BUCKET_NAME}".`,
-          key: filename
-        })
-      };
+      return errorResponse(404, 'File not found', {
+        message: `The requested file "${filename}" was not found in S3 bucket "${config.aws.s3.bucket}".`,
+        key: filename
+      });
     }
     
     // Generate a signed URL for the file with content-type header
-    console.log(`Generating signed URL for file: ${filename}`);
+    console.log(`Generating signed URL for: ${filename}`);
     const signedUrl = await getSignedUrl(filename, 3600, {
       'ResponseContentType': 'audio/mpeg',
       'ResponseContentDisposition': 'inline'
     });
     
-    // Log a masked version of the URL for debugging
-    const maskedUrl = signedUrl ? 
-      signedUrl.split('?')[0] + '?[SIGNATURE_PARAMS_REDACTED]' : 
-      'undefined';
-    console.log(`Generated signed URL (masked): ${maskedUrl}`);
-    
     if (!signedUrl) {
       console.error(`Failed to generate signed URL for: ${filename}`);
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          error: 'Error generating signed URL',
-          message: 'Failed to generate a signed URL for the requested file. Please check AWS credentials and S3 bucket configuration.',
-          key: filename
-        })
-      };
+      return errorResponse(500, 'Error generating signed URL', {
+        message: `Could not generate a signed URL for "${filename}".`
+      });
     }
     
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate'
-      },
-      body: JSON.stringify({ 
-        url: signedUrl,
-        contentType: 'audio/mpeg',
-        expiresIn: 3600
-      })
-    };
+    console.log(`Successfully generated signed URL for: ${filename}`);
+    
+    // Return the signed URL to the client
+    return successResponse({ 
+      url: signedUrl,
+      contentType: 'audio/mpeg',
+      expiresIn: 3600
+    }, {
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
+    });
   } catch (error) {
-    console.error('Error generating signed URL:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        error: 'Error generating signed URL',
-        message: error.message,
-        stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined
-      })
-    };
+    console.error(`Error in stream function: ${error.message}`);
+    return errorResponse(500, 'Server error', error);
   }
 };

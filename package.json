@@ -12,7 +12,8 @@
     "validate-env": "node scripts/validate-env.js",
     "sync-env": "node scripts/sync-env.js",
     "predeploy": "npm run validate-env",
-    "deploy": "netlify deploy --prod"
+    "deploy": "netlify deploy --prod",
+    "test-functions": "node scripts/test-netlify-functions.js"
   },
   "keywords": [],
   "author": "",

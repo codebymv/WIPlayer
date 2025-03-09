@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const { getSignedUrl, objectExists, getObjectMetadata } = require('./utils/s3');
-require('dotenv').config();
+const { successResponse, errorResponse } = require('./utils/response-helpers');
+const mongoConfig = require('../../config/mongodb-config');
+const config = require('../../config');
 
 // Import the Song model from the local models directory
 const Song = require('./models/song');
@@ -16,18 +18,15 @@ async function connectToDatabase() {
   
   try {
     // Log the connection string (without credentials) for debugging
-    const connectionString = process.env.MONGODB_URI;
-    const sanitizedUri = connectionString ? 
-      connectionString.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@') : 
-      'undefined';
+    const sanitizedUri = mongoConfig.getSanitizedUri();
     console.log(`Attempting to connect to MongoDB with URI: ${sanitizedUri}`);
-    console.log('MongoDB URI exists:', !!process.env.MONGODB_URI);
+    console.log('MongoDB URI exists:', !!mongoConfig.mongoDbUri);
     
     // Set mongoose options for serverless environment
     mongoose.set('strictQuery', false);
     
     // Check if MongoDB URI is defined
-    if (!connectionString) {
+    if (!mongoConfig.mongoDbUri) {
       throw new Error('MONGODB_URI environment variable is not defined');
     }
     
@@ -39,34 +38,12 @@ async function connectToDatabase() {
       await mongoose.connection.close();
     }
     
-    // Detect if we're in Netlify production environment
-    // Note: process.env.NETLIFY is true in both dev and production, but NETLIFY_DEV is only true in dev
-    const isNetlifyProduction = process.env.NETLIFY && !process.env.NETLIFY_DEV;
-    console.log(`Environment: ${isNetlifyProduction ? 'Netlify Production' : 'Local Development'}`);
+    console.log(`Environment: ${mongoConfig.isNetlifyProduction ? 'Netlify Production' : 'Local Development'}`);
     
-    // Base connection options that work in both environments
-    const connectionOptions = {
-      serverSelectionTimeoutMS: 30000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 30000,
-      retryWrites: true,
-      w: 'majority',
-      maxPoolSize: 10
-    };
+    // Use the connection options from our config
+    console.log('Using MongoDB connection options:', JSON.stringify(mongoConfig.connectionOptions));
     
-    // Only add these options in production environment
-    if (isNetlifyProduction) {
-      console.log('Adding production-specific MongoDB options');
-      Object.assign(connectionOptions, {
-        ssl: true,
-        authSource: 'admin',
-        retryReads: true
-      });
-    }
-    
-    console.log('Using MongoDB connection options:', JSON.stringify(connectionOptions));
-    
-    const connection = await mongoose.connect(process.env.MONGODB_URI, connectionOptions);
+    const connection = await mongoose.connect(mongoConfig.mongoDbUri, mongoConfig.connectionOptions);
     
     console.log('Successfully connected to MongoDB');
     cachedDb = connection;
@@ -120,9 +97,9 @@ exports.handler = async (event, context) => {
   try {
     // Log environment variables (without sensitive data)
     console.log('Environment check:');
-    console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    console.log('- WIPLAYER_AWS_REGION:', process.env.WIPLAYER_AWS_REGION);
-    console.log('- S3_BUCKET_NAME:', process.env.S3_BUCKET_NAME);
+    console.log('- MONGODB_URI exists:', !!mongoConfig.mongoDbUri);
+    console.log('- WIPLAYER_AWS_REGION:', config.awsRegion);
+    console.log('- S3_BUCKET_NAME:', config.s3BucketName);
     
     // Connect to the database
     try {
@@ -131,57 +108,22 @@ exports.handler = async (event, context) => {
       console.log('MongoDB connection successful');
     } catch (dbError) {
       console.error('MongoDB connection failed:', dbError);
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          error: 'Database connection failed', 
-          message: dbError.message,
-          stack: dbError.stack 
-        })
-      };
+      return errorResponse(500, 'Database connection failed', dbError);
     }
     
     console.log('Fetching songs from database...');
     let songs;
     try {
-      songs = await Song.find();
+      songs = await Song.find({});
       console.log(`Found ${songs ? songs.length : 0} songs in database`);
     } catch (findError) {
       console.error('Error finding songs:', findError);
-      return {
-        statusCode: 500,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          error: 'Error finding songs', 
-          message: findError.message,
-          stack: findError.stack 
-        })
-      };
+      return errorResponse(500, 'Error finding songs', findError);
     }
     
     if (!songs || songs.length === 0) {
-      console.error('No songs found in database');
-      return {
-        statusCode: 404,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ error: 'No songs found' })
-      };
+      console.log('No songs found in database');
+      return errorResponse(404, 'No songs found');
     }
     
     console.log('Processing songs for S3 streaming...');
@@ -213,27 +155,9 @@ exports.handler = async (event, context) => {
     });
     
     console.log(`Sending ${songsWithS3Urls.length} songs to client`);
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(songsWithS3Urls)
-    };
+    return successResponse(songsWithS3Urls);
   } catch (error) {
     console.error('Error fetching songs:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ error: 'Error fetching songs' })
-    };
+    return errorResponse(500, 'Error fetching songs', error);
   }
 };

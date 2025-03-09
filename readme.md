@@ -2,7 +2,7 @@
 
 An advanced music player application with dynamic audio visualization, cloud storage integration, and a responsive design for an engaging user experience.
 
-**Link to project:** https://wiplayer.netlify.app/
+**Link to project:** https://wpfs.netlify.app/
 
 ![](https://github.com/codebymv/WIPlayer/blob/main/images/wiplayer.gif)
 
@@ -42,6 +42,82 @@ The application continues to evolve with planned enhancements:
 - **Search Functionality**: Find songs quickly with powerful search
 - **Real-time Features**: Collaborative listening sessions and social features
 
+## Project Structure
+
+The WIPlayer application follows a modular architecture designed for maintainability and scalability:
+
+### Backend
+- `/config` - Centralized configuration modules
+  - `index.js` - Main configuration exports
+  - `aws-config.js` - AWS S3 configuration
+  - `mongodb-config.js` - MongoDB connection settings
+- `/models` - MongoDB schema definitions
+- `/netlify/functions` - Serverless functions for production deployment
+  - `songs.js` - Fetch song metadata from MongoDB
+  - `stream.js` - Generate pre-signed URLs for S3 audio streaming
+  - `refresh-url.js` - Refresh expired S3 pre-signed URLs
+  - `/models` - MongoDB schemas for Netlify functions
+  - `/utils` - Utility functions for Netlify functions
+- `/scripts` - Utility scripts for testing and deployment
+  - `test-netlify-functions.js` - Test script for Netlify functions
+  - `verify-credentials.js` - Verify AWS credentials and S3 access
+- `/utils` - Shared utility functions
+  - `s3.js` - AWS S3 utility functions
+  - `response-helpers.js` - Standardized HTTP response helpers
+
+### Frontend
+- `/public` - Frontend assets and client-side code
+  - `app.js` - Core application logic
+  - `data.js` - Data management
+  - `main.js` - UI initialization and event handling
+  - `particlesystem.js` - Visualization effects
+  - `style.css` - Application styling
+
+## Deployment
+
+The application is deployed on Netlify using serverless functions:
+
+### Local Development
+1. Install dependencies: `npm install`
+2. Set up environment variables in a `.env` file (see Environment Variables section)
+3. Run the Express server: `npm run dev`
+4. For Netlify Functions development: `npm run netlify-dev`
+5. Test Netlify functions: `npm run test-functions`
+6. Verify AWS credentials: `node scripts/verify-credentials.js`
+
+### Production Deployment
+1. Configure environment variables in the Netlify dashboard:
+   - `MONGODB_URI` - MongoDB connection string
+   - `S3_BUCKET_NAME` - "wiplayer"
+   - `WIPLAYER_AWS_KEY_ID` - AWS access key with S3 permissions
+   - `WIPLAYER_AWS_SECRET` - AWS secret key
+   - `WIPLAYER_AWS_REGION` - "us-west-2"
+2. Run pre-deployment checks: `npm run predeploy`
+3. Deploy to Netlify: `npm run deploy`
+
+### Environment Variables
+
+The application requires the following environment variables:
+
+#### Local Development (.env file)
+```
+PORT=3000
+MONGODB_URI=your_mongodb_connection_string
+WIPLAYER_AWS_KEY_ID=your_aws_access_key
+WIPLAYER_AWS_SECRET=your_aws_secret_key
+WIPLAYER_AWS_REGION=us-west-2
+S3_BUCKET_NAME=wiplayer
+```
+
+#### Netlify Deployment (Netlify Dashboard)
+Configure the same variables in the Netlify dashboard under Site Settings > Environment variables.
+
+### Netlify Functions
+The application uses the following serverless functions:
+- `songs.js` - Fetches song data from MongoDB
+- `stream.js` - Handles streaming audio files from AWS S3
+- `refresh-url.js` - Refreshes S3 pre-signed URLs
+
 ## Setup and Installation
 
 1. Clone the repository
@@ -71,7 +147,25 @@ The application requires proper AWS S3 setup:
    - s3:HeadBucket
    - s3:HeadObject
 3. Ensure these permissions are scoped to the "wiplayer" bucket
-4. Configure CORS settings on your S3 bucket to allow access from your application domain
+4. Configure CORS settings on your S3 bucket using the provided `s3-cors-config.json` file:
+   ```bash
+   aws s3api put-bucket-cors --bucket wiplayer --cors-configuration file://s3-cors-config.json
+   ```
+5. The CORS configuration should allow origins including localhost:8888 and wpfs.netlify.app
+
+## Testing
+
+The application includes test scripts to verify functionality:
+
+1. Test Netlify functions: `npm run test-functions`
+   - This tests the songs, stream, and refresh-url functions
+   - Verifies MongoDB connection and AWS S3 access
+   - Confirms that pre-signed URLs are generated correctly
+
+2. Verify AWS credentials: `node scripts/verify-credentials.js`
+   - Checks AWS credentials validity
+   - Verifies S3 bucket access
+   - Lists objects in the S3 bucket
 
 ## Lessons Learned:
 

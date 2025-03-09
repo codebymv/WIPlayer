@@ -1,70 +1,33 @@
 const AWS = require('aws-sdk');
-require('dotenv').config();
+const config = require('../../../config');
 
 // Log AWS configuration details (without sensitive data)
 console.log('AWS Configuration:');
-console.log('- WIPLAYER_AWS_KEY_ID exists:', !!process.env.WIPLAYER_AWS_KEY_ID);
-console.log('- WIPLAYER_AWS_SECRET exists:', !!process.env.WIPLAYER_AWS_SECRET);
-console.log('- WIPLAYER_AWS_REGION exists:', !!process.env.WIPLAYER_AWS_REGION);
-console.log('- AWS_ACCESS_KEY_ID exists:', !!process.env.AWS_ACCESS_KEY_ID);
-console.log('- AWS_SECRET_ACCESS_KEY exists:', !!process.env.AWS_SECRET_ACCESS_KEY);
-console.log('- AWS_REGION exists:', !!process.env.AWS_REGION);
-console.log('- S3_BUCKET_NAME exists:', !!process.env.S3_BUCKET_NAME);
-console.log('- S3_BUCKET_NAME value:', process.env.S3_BUCKET_NAME);
+console.log('- Using centralized AWS configuration');
+console.log('- AWS region:', config.aws.s3.region);
+console.log('- S3 bucket name:', config.aws.s3.bucket);
 
-// Detect environment
-const isNetlifyProduction = process.env.NETLIFY && !process.env.NETLIFY_DEV;
-console.log(`Environment: ${isNetlifyProduction ? 'Netlify Production' : 'Local Development'}`);
-
-// Use WIPLAYER_AWS_* variables first, fall back to standard AWS_* variables
-const awsConfig = {
-    accessKeyId: process.env.WIPLAYER_AWS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.WIPLAYER_AWS_SECRET || process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.WIPLAYER_AWS_REGION || process.env.AWS_REGION || 'us-west-2'
-};
-
-console.log('Using AWS region:', awsConfig.region);
-console.log('Using AWS key ID (masked):', awsConfig.accessKeyId ? `${awsConfig.accessKeyId.substring(0, 4)}...` : 'undefined');
-
-// Check for missing AWS credentials
-if (!awsConfig.accessKeyId || !awsConfig.secretAccessKey) {
-    console.error('ERROR: AWS credentials are missing. Check environment variables.');
-    if (isNetlifyProduction) {
-        console.error('Make sure you have set WIPLAYER_AWS_KEY_ID and WIPLAYER_AWS_SECRET in your Netlify environment variables.');
-    } else {
-        console.error('Make sure you have set WIPLAYER_AWS_KEY_ID and WIPLAYER_AWS_SECRET in your .env file.');
-    }
-}
-
-// Check for missing S3 bucket name
-if (!process.env.S3_BUCKET_NAME) {
-    console.error('ERROR: S3_BUCKET_NAME environment variable is not set.');
-    if (isNetlifyProduction) {
-        console.error('Make sure you have set S3_BUCKET_NAME in your Netlify environment variables.');
-    } else {
-        console.error('Make sure you have set S3_BUCKET_NAME in your .env file.');
-    }
-}
-
-// Configure AWS with our settings
-AWS.config.update(awsConfig);
+// Configure AWS with our centralized config
+AWS.config.update({
+    accessKeyId: config.aws.s3.accessKeyId,
+    secretAccessKey: config.aws.s3.secretAccessKey,
+    region: config.aws.s3.region
+});
 
 // Add additional configuration for Netlify production environment
-if (isNetlifyProduction) {
-    // Increase timeouts for serverless environment
+if (config.isNetlifyProduction) {
+    console.log('Adding Netlify production-specific AWS options');
     AWS.config.update({
         httpOptions: {
-            timeout: 5000, // 5 seconds
-            connectTimeout: 5000 // 5 seconds
+            timeout: 5000,
+            connectTimeout: 5000
         },
         maxRetries: 3
     });
 }
 
 const s3 = new AWS.S3();
-const bucketName = process.env.S3_BUCKET_NAME;
-
-console.log('S3 bucket name:', bucketName);
+const bucketName = config.aws.s3.bucket;
 
 // Get a signed URL for an S3 object
 function getSignedUrl(key, expirationSeconds = 3600, additionalParams = {}) {
@@ -155,7 +118,7 @@ function getPublicUrl(key) {
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
     
     // Ensure we're using the correct region (prioritize WIPLAYER_AWS_REGION)
-    const region = process.env.WIPLAYER_AWS_REGION;
+    const region = config.aws.s3.region;
     console.log(`Using region for public URL: ${region}`);
     
     return `https://${bucketName}.s3.${region}.amazonaws.com/${cleanKey}`;

@@ -1,23 +1,27 @@
 require('dotenv').config();
 const AWS = require('aws-sdk');
+const { aws: awsConfig } = require('../config');
 
-// Configure AWS with credentials from .env
+// Configure AWS with credentials from centralized config
 const credentials = new AWS.Credentials({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  accessKeyId: process.env.WIPLAYER_AWS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.WIPLAYER_AWS_SECRET || process.env.AWS_SECRET_ACCESS_KEY
 });
 
 // Test the credentials by making a simple API call
-const sts = new AWS.STS({ credentials, region: process.env.AWS_REGION });
+const region = process.env.WIPLAYER_AWS_REGION || process.env.AWS_REGION;
+const sts = new AWS.STS({ credentials, region });
 
 console.log('Attempting to verify AWS credentials...');
-console.log('Access Key ID:', process.env.AWS_ACCESS_KEY_ID);
-console.log('Region:', process.env.AWS_REGION);
+console.log('Access Key ID:', credentials.accessKeyId ? credentials.accessKeyId.substring(0, 4) + '...' : 'Not set');
+console.log('Region:', region);
+console.log('S3 Bucket:', awsConfig.s3.bucket);
 
 sts.getCallerIdentity({}, (err, data) => {
   if (err) {
     console.error('Error verifying credentials:', err.message);
     console.error('This suggests your credentials are invalid or expired.');
+    process.exit(1);
     return;
   }
   
@@ -26,8 +30,8 @@ sts.getCallerIdentity({}, (err, data) => {
   console.log('User ARN:', data.Arn);
   
   // Now test S3 access specifically
-  const s3 = new AWS.S3({ credentials, region: process.env.AWS_REGION });
-  const bucketName = process.env.S3_BUCKET_NAME;
+  const s3 = new AWS.S3({ credentials, region });
+  const bucketName = awsConfig.s3.bucket;
   
   console.log(`\nTesting access to S3 bucket: ${bucketName}`);
   
@@ -55,6 +59,7 @@ sts.getCallerIdentity({}, (err, data) => {
       if (headErr) {
         console.error(`Error accessing bucket "${bucketName}":`, headErr.message);
         console.error('This suggests your user lacks permission to access this specific bucket');
+        process.exit(1);
       } else {
         console.log(`✓ Successfully accessed bucket "${bucketName}"`);
         
@@ -63,9 +68,10 @@ sts.getCallerIdentity({}, (err, data) => {
           if (objErr) {
             console.error('Error listing objects in bucket:', objErr.message);
             console.error('This suggests your user lacks s3:ListBucket permission on this bucket');
+            process.exit(1);
           } else {
             console.log(`✓ Successfully listed objects in bucket "${bucketName}"`);
-            if (objData.Contents.length > 0) {
+            if (objData.Contents && objData.Contents.length > 0) {
               console.log('First few objects:');
               objData.Contents.forEach(item => {
                 console.log(`- ${item.Key} (${item.Size} bytes)`);
@@ -73,6 +79,8 @@ sts.getCallerIdentity({}, (err, data) => {
             } else {
               console.log('Bucket is empty');
             }
+            console.log('\nAll AWS credential checks passed successfully!');
+            process.exit(0);
           }
         });
       }

@@ -1,15 +1,26 @@
 const AWS = require('aws-sdk');
-require('dotenv').config();
+const config = require('../config');
 
-// Configure AWS
+// Configure AWS with our centralized config
 AWS.config.update({
-    accessKeyId: process.env.WIPLAYER_AWS_KEY_ID,
-    secretAccessKey: process.env.WIPLAYER_AWS_SECRET,
-    region: process.env.WIPLAYER_AWS_REGION
+    accessKeyId: config.aws.s3.accessKeyId,
+    secretAccessKey: config.aws.s3.secretAccessKey,
+    region: config.aws.s3.region
 });
 
+// Add additional configuration for Netlify production environment
+if (config.isNetlifyProduction) {
+    AWS.config.update({
+        httpOptions: {
+            timeout: 5000,
+            connectTimeout: 5000
+        },
+        maxRetries: 3
+    });
+}
+
 const s3 = new AWS.S3();
-const bucketName = process.env.S3_BUCKET_NAME;
+const bucketName = config.aws.s3.bucket;
 
 // Get a signed URL for an S3 object
 function getSignedUrl(key, expirationSeconds = 3600, additionalParams = {}) {
@@ -63,7 +74,7 @@ function getPublicUrl(key) {
     // Make sure the key doesn't have a leading slash
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
     
-    return `https://${bucketName}.s3.${process.env.WIPLAYER_AWS_REGION}.amazonaws.com/${cleanKey}`;
+    return `https://${bucketName}.s3.${config.aws.s3.region}.amazonaws.com/${cleanKey}`;
 }
 
 // Check if an object exists in the bucket

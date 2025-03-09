@@ -1,0 +1,1253 @@
+:root {
+    --primary-color: #1e88e5;
+    --secondary-color: #00897b;
+    --background-color: #121212;
+    --text-color: #ffffff;
+    --button-hover-color: rgba(255, 255, 255, 0.3);
+    --font-size-small: 0.875rem;
+    --font-size-medium: 1rem;
+    --font-size-large: 1.25rem;
+    --font-size-xlarge: 1.5rem;
+    --spacing-small: 0.5rem;
+    --spacing-medium: 1rem;
+    --spacing-large: 1.5rem;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    font-size: var(--font-size-medium);
+    color: var(--text-color);
+    background: var(--background-color);
+    /* min-height: 100vh; */
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Ensure the body and html cover the full viewport */
+html, body {
+    height: 100%;
+    margin: 0;
+}
+#app-logo {
+    position: fixed;
+    z-index: 1001;
+    transition: all 0.3s ease;
+    bottom: 20px; /* Position from bottom */
+    right: 20px; /* Position from right */
+}
+
+#app-logo img {
+    width: 80px; /* Smaller default size */
+    height: auto;
+    transition: width 0.3s ease;
+}
+
+@media screen and (max-height: 575px) {
+    #app-logo {
+      display: none;
+    }
+  }
+
+  @media screen and (max-width: 680px) {
+    #app-logo {
+      display: none;
+    }
+  }
+
+
+/* For screens up to 767px (typical mobile screens) */
+@media (max-width: 767px) {
+    #app-logo {
+        bottom: 80px; /* Higher position to avoid URL bar */
+    }
+    
+    #app-logo img {
+        width: 120px; /* Even smaller for mobile */
+    }
+}
+
+/* For medium-sized screens */
+@media (min-width: 700px) and (max-width: 1023px) {
+    #app-logo {
+        bottom: 30px;
+        right: 30px;
+    }
+    
+    #app-logo img {
+        width: 180px;
+    }
+}
+
+@media (min-height: 500px) and (max-height: 570px) {
+    .disk {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+/* For larger screens */
+@media (min-width: 1024px) {
+    #app-logo {
+        top: 20px; /* Switch to top positioning */
+        left: 20px; /* Switch to left positioning */
+        bottom: auto; /* Remove bottom positioning */
+        right: auto; /* Remove right positioning */
+    }
+    
+    
+
+    #app-logo img {
+        width: 250px;
+    }
+}
+
+@media (min-width: 1150px) {
+    #app-logo img {
+        width: 340px;
+    }
+}
+
+
+/* For very large screens */
+@media (min-width: 1440px) {
+    #app-logo img {
+        width: 480px;
+    }
+}
+
+  /* Rest of the CSS for smaller screens remains the same */
+  
+  #app-logo:hover {
+    transform: scale(1.05);
+  }
+
+
+
+
+  
+  @media screen and (max-height: 500px) {
+    .disk {
+        display: none;
+    }
+    
+    .song-info {
+        margin-bottom: 20px; /* Increase bottom margin */
+    }
+    
+    .controls {
+        margin-top: 20px; /* Increase top margin */
+    }
+}
+
+/* Visualizer container styling */
+.visualizer-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2; /* Ensure visualizer is in front of particles */
+}
+
+
+/* Mobile-specific settings */
+
+/* Mobile-specific settings */
+@media (max-width: 768px) {
+    .particles {
+        height: 30vh; /* Smaller height on mobile devices */
+        background-size: 150% 150%;
+        z-index: 3; /* Above the visualizer on mobile */
+    }
+
+    .music-player {
+        width: 95%;
+        max-width: 300px;
+        transition: font-family 0.5s ease;
+        justify-content: center; /* Center content */
+        padding: 1rem;
+        overflow-y: auto; /* Enable vertical scrolling if necessary */
+    }
+    
+    .controls, .button-container {
+        flex-wrap: wrap;
+        justify-content: center; /* Center controls */
+        margin-bottom: var(--spacing-small); /* Reduce bottom margin */
+    }
+
+    .btn, .state-button {
+        margin: 0.5rem;
+        width: 40px; /* Adjust size */
+        height: 40px;
+    }
+
+    .disk {
+        width: 150px;
+        height: 150px;
+    }
+
+    .music-name {
+        font-size: calc(var(--font-size-small) * 2); /* Reduce font size */
+    }
+
+    .artist-name {
+        font-size: calc(var(--font-size-small) * 1.5); /* Reduce font size */
+    }
+
+    .state-button {
+        min-width: 50px;
+        min-height: 50px;
+        font-size: 0.8rem; /* Adjust font size */
+    }
+
+    .state-button .preview {
+        opacity: 0.3;
+    }
+
+    .state-button .description {
+        font-size: 0.8rem; /* Reduce font size */
+    }
+
+    .state-button:hover .preview,
+    .state-button.active .preview {
+        opacity: 0.7;
+    }
+
+    .state-button:hover .description,
+    .state-button.active .description {
+        opacity: 1;
+    }
+    .volume-bar {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 60%;
+        height: 10px; /* Increase height for easier interaction */
+        background: rgba(255, 255, 255, 0.2);
+        outline: none;
+        opacity: 0.7;
+        transition: opacity .2s;
+        border-radius: 5px;
+    }
+
+    .volume-bar::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px; /* Increase size for easier interaction */
+        height: 20px;
+        background: var(--text-color);
+        cursor: pointer;
+        border-radius: 50%;
+    }
+
+    .volume-bar::-moz-range-thumb {
+        width: 20px; /* Increase size for easier interaction */
+        height: 20px;
+        background: var(--text-color);
+        cursor: pointer;
+        border-radius: 50%;
+    }
+}
+
+.custom-volume-bar {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    position: relative;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.volume-fill {
+    height: 100%;
+    background-color: #ffffff;
+    width: 100%;
+    border-radius: 5px;
+}
+
+.volume-handle {
+    width: 20px;
+    height: 20px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    right: -10px;
+    transform: translateY(-50%);
+}
+
+@media (max-height: 500px) {
+    .disk {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+
+
+/* Adjust for even smaller screens like iPhone SE */
+@media (max-width: 375px) {
+    .music-player {
+        width: 85%; /* Reduce width further */
+        padding: 0.75rem; /* Reduce padding */
+        margin: 0 auto 10px auto; /* Reduce bottom margin */
+        max-width: 280px; /* Reduce max-width */
+    }
+
+    .menu-container {
+        width: 25px;
+        height: 25px;
+        top: 10px;
+        right: 10px;
+    }
+
+    .hamburger {
+        font-size: 1.2rem; /* Reduce font size */
+    }
+
+    .music-name {
+        font-size: 0.8rem; /* Reduce font size */
+        margin-bottom: 0.2rem; /* Reduce margin */
+    }
+
+    .artist-name {
+        font-size: 0.7rem; /* Reduce font size */
+    }
+
+    .btn, .state-button {
+        width: 28px; /* Further reduce button size */
+        height: 28px;
+        margin: 0.3rem; /* Reduce margin */
+    }
+
+    .play-btn {
+        width: 40px; /* Adjust play button size */
+        height: 40px;
+    }
+
+    .disk {
+        width: 100px; /* Reduce disk size */
+        height: 100px;
+        margin: 5px auto; /* Reduce margin */
+    }
+
+    .controls {
+        margin-bottom: 0.5rem; /* Reduce margin */
+    }
+
+    .button-container {
+        margin-top: 0.5rem; /* Add some space above buttons */
+    }
+
+    .volume-control {
+        padding: 0.3em; /* Reduce padding */
+    }
+
+    .custom-volume-bar {
+        height: 8px; /* Reduce height */
+    }
+
+    .volume-handle {
+        width: 16px; /* Reduce handle size */
+        height: 16px;
+    }
+
+    .volume-icon {
+        font-size: 1em; /* Reduce icon size */
+        padding: 5px; /* Reduce padding */
+    }
+
+    /* Adjust seek bar */
+    .seek-bar {
+        height: 3px; /* Reduce height */
+    }
+
+    .seek-bar::-webkit-slider-thumb {
+        width: 12px; /* Reduce thumb size */
+        height: 12px;
+    }
+
+    .seek-bar::-moz-range-thumb {
+        width: 12px; /* Reduce thumb size */
+        height: 12px;
+    }
+
+    /* Adjust time info */
+    .time-info {
+        font-size: 0.7rem; /* Reduce font size */
+    }
+}
+
+/* Styling for the music player controls */
+.music-player {
+    position: relative;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Default particle settings */
+.particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1; /* Below the visualizer by default */
+}
+
+.visualizer-container, .particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    transition: background 0.5s ease;
+}
+
+.visualizer-container {
+    background-size: 400% 400%;
+    animation: gradientAnimation 15s ease infinite;
+}
+
+.particles {
+    background-size: cover;
+    background-position: center;
+}
+
+.music-player {
+    width: 90%;
+    max-width: 350px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: var(--spacing-medium);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.song-info {
+    text-align: center;
+    margin-bottom: var(--spacing-medium);
+}
+
+.song-slider {
+    position: relative;
+    width: 100%;
+    margin-bottom: var(--spacing-medium);
+}
+
+.time-info {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.current-time, .song-duration {
+    font-size: var(--font-size-small);
+    opacity: 0.8;
+}
+
+.seek-bar-container {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+
+.seek-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #fff;
+    border-radius: 5px;
+    width: 0%;
+    z-index: 1;
+}
+
+.seek-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    z-index: 2;
+    cursor: pointer;
+}
+
+.seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+}
+
+.seek-bar::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+}
+
+.seek-bar::-webkit-slider-runnable-track {
+    background: transparent;
+    border: none;
+    height: 8px;
+}
+
+.seek-bar::-moz-range-track {
+    background: transparent;
+    border: none;
+    height: 8px;
+}
+
+.music-name {
+    font-size: calc(var(--font-size-large) * 2);
+    font-weight: 500;
+    margin-bottom: var(--spacing-small);
+}
+
+.artist-name {
+    font-size: calc(var(--font-size-medium) * 2);
+    opacity: 0.8;
+}
+
+.disk {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    margin: 0 auto var(--spacing-medium);
+    animation: rotate 20s linear infinite;
+    animation-play-state: paused;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 8px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+}
+
+.disk::after {
+    content: '';
+
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.5), rgba(255,255,255,0.1));
+    z-index: -1;
+}
+
+.disk.play {
+    animation-play-state: running;
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-medium);
+}
+
+.volume-control {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: var(--spacing-small);
+    margin: auto;
+    padding: .5em;
+
+}
+
+.volume-bar {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+}
+
+.volume-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+.volume-bar::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .volume-bar {
+        height: 20px;
+    }
+    .volume-bar::-webkit-slider-thumb {
+        width: 30px;
+        height: 30px;
+    }
+    .volume-bar::-moz-range-thumb {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+@media (max-height: 550px) {
+    .music-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      font-size: 1.2rem; /* Adjust this value as needed */
+    }
+    
+    .song-info {
+      width: 100%;
+    }
+  }
+
+.volume-bar:hover {
+    opacity: 1;
+}
+
+.volume-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%; 
+    background: var(--text-color);
+    cursor: pointer;
+}
+
+.volume-bar::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--text-color);
+    cursor: pointer;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* margin-top: 10px; */
+}
+
+.volume-icon {
+    font-size: 1.2em;
+    color: var(--text-color);
+    opacity: 0.7;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+    padding: 10px;
+}
+
+.volume-icon:hover {
+    opacity: 1;
+}
+
+.volume-bar {
+    margin: 0 10px;
+}
+.volume-control {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.custom-volume-bar {
+    position: relative;
+    width: 60%;
+    height: 12px; /* Increased height */
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    cursor: pointer;
+}
+
+.volume-fill {
+    height: 100%;
+    background-color: #ffffff;
+    border-radius: 15px;
+    pointer-events: none; /* Allows clicks to pass through */
+}
+
+.volume-handle {
+    width: 20px;
+    height: 20px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; /* Allows clicks to pass through */
+}
+
+.volume-icon {
+    font-size: 1.2em;
+    color: var(--text-color);
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 10px;
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+    .custom-volume-bar {
+        height: 10px; /* Even larger on mobile */
+    }
+
+    .volume-handle {
+        width: 30px;
+        height: 30px;
+    }
+
+    .volume-icon {
+        font-size: 1.5em;
+        padding: 15px;
+    }
+}
+
+.btn, .play-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: var(--text-color);
+    font-size: var(--font-size-xlarge);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.btn:hover, .play-btn:hover {
+    background-color: var(--button-hover-color);
+    transform: scale(1.05);
+}
+
+.play-btn {
+    width: 60px;
+    height: 60px;
+}
+
+/* Play button */
+.play-btn::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    border-left: 20px solid var(--text-color);
+    transform: translateX(2px);
+}
+
+/* Pause button */
+.play-btn.pause::before {
+    width: 6px;
+    height: 20px;
+    border: none;
+    background: var(--text-color);
+    transform: translateX(-5px);
+}
+
+.play-btn.pause::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 20px;
+    background: var(--text-color);
+    transform: translateX(5px);
+}
+
+/* Backward button */
+.backward-btn::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 13px solid var(--text-color);
+    transform: translateX(-2px);
+}
+
+.backward-btn::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 13px solid var(--text-color);
+    transform: translateX(6px);
+}
+
+/* Forward button */
+.forward-btn::before {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 13px solid var(--text-color);
+    transform: translateX(-6px);
+}
+
+.forward-btn::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 13px solid var(--text-color);
+    transform: translateX(2px);
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-around;
+}
+
+.state-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text-color);
+    padding: var(--spacing-small);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    min-width: 60px;
+    min-height: 60px;
+}
+
+.state-button .preview,
+.state-button .description {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease;
+}
+
+.state-button .preview {
+    opacity: 0;
+}
+
+.state-button:hover .preview,
+.state-button.active .preview {
+    opacity: 1;
+}
+
+.state-button:hover .description,
+.state-button.active .description {
+    opacity: 0;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes gradientAnimation {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes previewFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes previewSwirl {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes previewPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+#preview1 { animation: previewFloat 2s infinite; }
+#preview2 { animation: previewSwirl 4s infinite linear; }
+#preview3 { animation: previewPulse 2s infinite; }
+
+.background-scheme-1 {
+    background: linear-gradient(45deg, #3c206e, #b45962, #c59d82);
+    font-family: 'Raleway', sans-serif;
+}
+.background-scheme-2 {
+    background: linear-gradient(45deg, #4b5661, #21626b, #d8b5b5); 
+    font-family: 'Raleway', sans-serif;
+}
+.background-scheme-3 {
+    background: linear-gradient(45deg, #4cb7d4, #18533b, #ad92a5);
+    font-family: 'Raleway', sans-serif;
+}  
+.background-scheme-4 {
+    background: linear-gradient(45deg, #601f8f, #5f336d, #835981);
+    font-family: 'Raleway', sans-serif;
+}
+
+.background-transition {
+    transition: background 1.5s ease;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+    .music-player {
+        max-width: 400px;
+    }
+
+    .music-name {
+        font-size: calc(var(--font-size-xlarge) * 1.5);
+    }
+
+    .artist-name {
+        font-size: calc(var(--font-size-large) * 1.25);
+    }
+
+    .volume-bar {
+        height: 15px;
+    }
+    .volume-bar::-webkit-slider-thumb {
+        width: 25px;
+        height: 25px;
+    }
+    .volume-bar::-moz-range-thumb {
+        width: 25px;
+        height: 25px;
+    }
+}
+
+.disk.loading {
+    background-image: none !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.disk.loading::after {
+    content: 'Loading...';
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--text-color);
+}
+
+
+
+@media (max-height: 640px) {
+    .disk {
+        width: 120px;
+        height: 120px;
+    }
+}
+
+@media (max-width: 768px) {
+    .particles {
+        background-size: 150% 150%;
+    }
+
+    .music-player {
+        width: 95%;
+        max-width: 260px;
+        transition: font-family 0.5s ease;
+        justify-content: space-between;
+        padding: 1rem;
+        margin-bottom: auto;
+        
+    }
+    .volume-bar {
+        width: 100%; /* Make the bar full width on mobile */
+        height: 10px; /* Increase height for easier touch */
+    }
+    .controls, .button-container {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+    
+      .btn, .state-button {
+        margin: 0.5rem;
+      }
+
+
+
+    .music-name {
+        font-size: calc(var(--font-size-medium) * 1.5);
+    }
+
+    .artist-name {
+        font-size: calc(var(--font-size-small) * 1);
+    }
+
+    .state-button {
+        min-width: 50px;
+        min-height: 50px;
+    }
+
+    .state-button .preview {
+        opacity: 0.3;
+    }
+
+    .state-button .description {
+        font-size: 0.8rem;
+    }
+
+    .state-button:hover .preview,
+    .state-button.active .preview {
+        opacity: 0.7;
+    }
+
+    .state-button:hover .description,
+    .state-button.active .description {
+        opacity: 1;
+    }
+}
+
+.menu-container {
+    position: fixed; /* Ensure the menu stays fixed at the corner */
+    top: 10px; /* Adjust position as needed */
+    right: 10px; /* Adjust position as needed */
+    z-index: 1000; /* Ensure it stays above other elements */
+}
+
+/* Adjust size for desktop view */
+@media (min-width: 1024px) {
+    .menu-container {
+        width: 80px; /* Increased width for larger size */
+        height: 80px; /* Increased height for larger size */
+        top: 75px; /* Adjust as needed */
+        right: 20px; /* Adjust as needed */
+    }
+
+    .menu-container .hamburger-icon { /* Adjust this selector based on your actual icon class */
+        width: 40px; /* Increase the icon size */
+        height: 40px; /* Increase the icon size */
+    }
+}
+
+/* Adjust size for smaller screens */
+@media (max-width: 1023px) {
+    .menu-container {
+        width: 40px; /* Smaller size for mobile */
+        height: 40px; /* Smaller size for mobile */
+    }
+}
+
+/* Basic styling for the menu */
+.menu {
+    background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+    padding: 1rem; /* Padding for spacing */
+    transition: opacity 0.3s ease, transform 0.3s ease; /* Smooth transitions */
+    opacity: 0; /* Start hidden */
+    transform: translateY(-20px); /* Start slightly above */
+    visibility: hidden; /* Hidden by default */
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    position: absolute;
+    right: 20px;
+    top: 60px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    padding: 1rem;
+}
+
+/* Styling for the menu items */
+.menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu li {
+    margin: 0.5rem 0; /* Space between items */
+    padding: 0.5rem 1rem; /* Padding for clickable area */
+    border-radius: 5px; /* Rounded corners for items */
+    transition: background-color 0.3s ease; /* Smooth background change */
+}
+
+/* Show the menu with animation */
+.menu.show {
+    visibility: visible; /* Make it visible */
+    opacity: 1; /* Fully visible */
+    transform: translateY(0); /* Move to original position */
+}
+
+
+.menu li a {
+    display: flex; /* Use flexbox for alignment */
+    align-items: center; /* Center items vertically */
+    color: #333; /* Default text color */
+    text-decoration: none;
+    font-size: 1.1rem;
+    transition: transform 0.3s ease, background-color 0.3s ease; /* Smooth transition for transform and background */
+    padding: 0.5rem 1rem; /* Add padding for better clickable area */
+    border-radius: 5px; /* Rounded corners */
+}
+
+.menu li a:hover {
+    transform: translateY(-2px); /* Move the item slightly upwards */
+    background-color: rgba(255, 255, 255, 0.2); /* Subtle off-white background on hover */
+    color: #333; /* Ensure text color remains the same on hover */
+}
+
+/* Add a fade-in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hamburger {
+    font-size: 2rem;
+    transition: transform 0.3s ease; /* Smooth transition for transform */
+    cursor: pointer; /* Change cursor to pointer */
+}
+
+.hamburger:hover {
+    transform: translateY(-2px); /* Move the icon slightly upwards */
+}
+
+.menu li a {
+    display: flex; /* Use flexbox for alignment */
+    align-items: center; /* Center items vertically */
+    color: #333;
+    text-decoration: none;
+    font-size: 1.1rem;
+    transition: transform 0.3s ease, background-color 0.3s ease; /* Smooth transition for transform and background */
+    padding: 0.5rem 1rem; /* Add padding for better clickable area */
+    border-radius: 5px; /* Rounded corners */
+}
+
+.menu li a:hover {
+    transform: translateY(-2px); /* Move the item slightly upwards */
+    background-color: rgba(255, 255, 255, 0.2); /* Subtle off-white background on hover */
+}
+
+.menu li a i {
+    margin-right: 8px; /* Space between icon and text */
+    font-size: 1.2rem; /* Adjust icon size */
+}
+
+.player {
+    position: relative; /* Ensure it doesn't affect the menu */
+    margin: 50px auto; /* Center the player */
+    width: 300px; /* Adjust as needed */
+    /* Other styles... */
+}
+
+/* ... existing styles ... */
+
+/* Hamburger menu styles for mobile */
+.menu {
+    display: none; /* Hide by default */
+}
+
+/* Show hamburger menu on smaller screens */
+@media (max-width: 768px) {
+    .menu {
+        display: block; /* Show on mobile */
+    }
+}
+
+/* Show menu items directly on larger screens */
+@media (min-width: 769px) {
+    .menu {
+        display: flex; /* Use flexbox for layout */
+        background-color: rgba(255, 255, 255, 0.9); /* Light background */
+        padding: 10px; /* Add padding */
+        border-radius: 5px; /* Rounded corners */
+        position: absolute; /* Positioning */
+        top: 60px; /* Adjust based on your layout */
+        right: 20px; /* Adjust based on your layout */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for depth */
+    }
+
+    .menu ul {
+        display: flex; /* Horizontal layout */
+        list-style: none; /* Remove bullet points */
+        margin: 0; /* Remove default margin */
+        padding: 0; /* Remove default padding */
+    }
+
+    .menu li {
+        margin: 0 15px; /* Space between items */
+    }
+
+    .menu a {
+        text-decoration: none; /* Remove underline */
+        color: #333; /* Text color */
+        font-weight: 500; /* Font weight */
+        transition: color 0.3s; /* Smooth transition */
+    }
+
+    .menu a:hover {
+        color: #007BFF; /* Change color on hover */
+    }
+}
+
+/* ... existing styles ... */

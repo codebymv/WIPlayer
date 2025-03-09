@@ -1,0 +1,26 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+  command = "npm run build"
+
+[dev]
+  functions = "netlify/functions"
+  publish = "public"
+  
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["mongoose"]
+
+[functions.songs]
+  timeout = 30
+
+[functions.stream]
+  timeout = 30
+
+[functions.refresh-url]
+  timeout = 30
+  
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200

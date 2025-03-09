@@ -58,6 +58,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let isVisualizerStarted = false;
 
     let music = document.getElementById('audio');
+    
+    // Ensure the audio element doesn't have a default source
+    if (music && music.src) {
+        if (music.src === window.location.origin + '/' || music.src === 'https://wpfs.netlify.app/') {
+            console.log('Removing default audio source to prevent fallback to Netlify URL');
+            music.removeAttribute('src');
+        }
+    }
+    
     const seekBar = document.querySelector('.seek-bar');
     const songName = document.querySelector('.music-name');
     const artistName = document.querySelector('.artist-name');
@@ -83,18 +92,178 @@ document.addEventListener('DOMContentLoaded', () => {
         return window.backgroundSchemes[Math.floor(Math.random() * window.backgroundSchemes.length)];
     }
 
-    fetch('/api/songs')
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
+    async function fetchSongs() {
+        try {
+            console.log('Fetching songs from API...');
+            const response = await fetch('/.netlify/functions/songs');
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`Error fetching songs: ${response.status} ${response.statusText}`);
+                console.error(`Response body: ${errorText}`);
+                throw new Error(`Failed to fetch songs: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Songs fetched successfully:', data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching songs:', error);
+            displayError(`Failed to load songs: ${error.message}`);
+            return [];
         }
-        return response.json();
-    })
+    }
+
+    function displayError(message) {
+        const errorContainer = document.getElementById('error-container') || createErrorContainer();
+        errorContainer.textContent = message;
+        errorContainer.style.display = 'block';
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            errorContainer.style.display = 'none';
+        }, 5000);
+    }
+
+    function createErrorContainer() {
+        const container = document.createElement('div');
+        container.id = 'error-container';
+        container.style.position = 'fixed';
+        container.style.top = '20px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+        container.style.color = 'white';
+        container.style.padding = '10px 20px';
+        container.style.borderRadius = '5px';
+        container.style.zIndex = '1000';
+        container.style.display = 'none';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    async function loadSong(song) {
+        try {
+            if (!song || !song.path) {
+                console.error('Invalid song or song path is missing');
+                displayError('Cannot play this song: missing file path');
+                return false;
+            }
+            
+            console.log(`Loading song: ${song.title}, path: ${song.path}`);
+            
+            // Extract the filename from the path
+            const filename = song.path.split('/').pop();
+            console.log(`Extracted filename: ${filename}`);
+            
+            // Try to get a signed URL from the stream function
+            try {
+                console.log(`Fetching signed URL for: ${filename}`);
+                const streamResponse = await fetch(`/.netlify/functions/stream/${filename}`);
+                
+                if (!streamResponse.ok) {
+                    const errorText = await streamResponse.text();
+                    console.error(`Error fetching stream URL: ${streamResponse.status} ${streamResponse.statusText}`);
+                    console.error(`Response body: ${errorText}`);
+                    throw new Error(`Failed to get stream URL: ${streamResponse.status}`);
+                }
+                
+                const streamData = await streamResponse.json();
+                
+                if (streamData && streamData.url) {
+                    console.log(`Received signed URL: ${streamData.url.substring(0, 100)}...`);
+                    music.src = streamData.url;
+                    music.load();
+                    return true;
+                } else {
+                    console.error('No URL in stream response:', streamData);
+                    throw new Error('No streaming URL available');
+                }
+            } catch (streamError) {
+                console.error('Error getting stream URL:', streamError);
+                
+                // Try the refresh-url function as a fallback
+                try {
+                    console.log(`Trying refresh-url function for: ${filename}`);
+                    const refreshResponse = await fetch(`/.netlify/functions/refresh-url/${filename}`);
+                    
+                    if (!refreshResponse.ok) {
+                        throw new Error(`Failed to refresh URL: ${refreshResponse.status}`);
+                    }
+                    
+                    const refreshData = await refreshResponse.json();
+                    
+                    if (refreshData && refreshData.url) {
+                        console.log(`Received refreshed URL: ${refreshData.url.substring(0, 100)}...`);
+                        music.src = refreshData.url;
+                        music.load();
+                        return true;
+                    } else {
+                        throw new Error('No URL in refresh response');
+                    }
+                } catch (refreshError) {
+                    console.error('Error refreshing URL:', refreshError);
+                    displayError(`Cannot play this song: ${refreshError.message}`);
+                    return false;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading song:', error);
+            displayError(`Cannot play this song: ${error.message}`);
+            return false;
+        }
+    }
+
+    async function refreshSignedUrl(key) {
+        try {
+            console.log('Refreshing signed URL for:', key);
+            const response = await fetch(`/.netlify/functions/refresh-url/${key}`);
+            if (!response.ok) {
+                throw new Error(`Failed to refresh URL: ${response.status} ${response.statusText}`);
+            }
+            const data = await response.json();
+            console.log('Received new signed URL');
+            return data.url;
+        } catch (error) {
+            console.error('Error refreshing signed URL:', error);
+            return null;
+        }
+    }
+
+    function displayErrorMessage(message) {
+        const errorContainer = document.getElementById('error-container') || createErrorContainer();
+        errorContainer.textContent = message;
+        errorContainer.style.display = 'block';
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            errorContainer.style.display = 'none';
+        }, 10000);
+    }
+    
+    function createErrorContainer() {
+        const container = document.createElement('div');
+        container.id = 'error-container';
+        container.style.position = 'fixed';
+        container.style.top = '20px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+        container.style.color = 'white';
+        container.style.padding = '15px 20px';
+        container.style.borderRadius = '5px';
+        container.style.zIndex = '1000';
+        container.style.display = 'none';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    fetchSongs()
     .then(data => {
         console.log('Fetched songs:', data);
         
-        // Check if we have valid song data
         if (!data || data.length === 0) {
+            console.error('No songs available');
             throw new Error('No songs available');
         }
         
@@ -106,7 +275,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        songs = data.map((song, index) => {
+        // Update the stream path to work with Netlify Functions
+        console.log('Processing songs for S3 streaming...');
+        const songsWithS3Urls = data.map(song => {
+            const songObj = song;
+            
+            // Update the path to use the Netlify Functions streaming endpoint
+            if (songObj.path && !songObj.path.startsWith('/.netlify/functions/stream/')) {
+                // If it's using the old /api/stream/ format, update it
+                if (songObj.path.startsWith('/api/stream/')) {
+                    songObj.path = songObj.path.replace('/api/stream/', '/.netlify/functions/stream/');
+                } else {
+                    songObj.path = `/.netlify/functions/stream/${songObj.path}`;
+                }
+                console.log(`Converted path to: ${songObj.path}`);
+            }
+            
+            return songObj;
+        });
+        
+        songs = songsWithS3Urls.map((song, index) => {
             // Always assign a new random color scheme, except for the first song
             if (index === 0) {
                 song.colorScheme = 'background-scheme-1';
@@ -115,6 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return song;
         });
+        
+        // Make songs available globally
+        window.songs = songs;
+        
+        // Dispatch a custom event to notify that songs are loaded
+        const songsLoadedEvent = new Event('songsLoaded');
+        window.dispatchEvent(songsLoadedEvent);
+        console.log('Dispatched songsLoaded event');
         
         if (songs.length > 0) {
             console.log('Setting initial song...');
@@ -134,158 +330,83 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('Error loading songs: ' + error.message);
     });
 
-    // Add this function to refresh signed URLs when needed
-    async function refreshSignedUrl(key) {
-        try {
-            console.log('Refreshing signed URL for:', key);
-            const response = await fetch(`/api/refresh-url/${key}`);
-            if (!response.ok) {
-                throw new Error(`Failed to refresh URL: ${response.status} ${response.statusText}`);
-            }
-            const data = await response.json();
-            console.log('Received new signed URL');
-            return data.url;
-        } catch (error) {
-            console.error('Error refreshing signed URL:', error);
-            return null;
-        }
-    }
-
-    // Add this function to handle audio errors
-    function handleAudioError(audioElement, sourcePath) {
-        console.error('Audio playback error for source:', sourcePath);
-        
-        // Display a user-friendly error message
-        showErrorMessage(`Unable to play "${songs[currentMusic].name}". The audio file may be unavailable in S3 storage. Please try again later or contact support.`);
-        
-        // Log detailed error information for debugging
-        if (audioElement.error) {
-            console.error('Media error code:', audioElement.error.code);
-            console.error('Media error message:', audioElement.error.message);
-        }
-        
-        // Update UI to reflect the error state
-        pauseMusic();
-        disk.classList.remove('play');
-        
-        // Optionally, try to play the next song if available
-        if (songs.length > 1) {
-            console.log('Attempting to play next song...');
-            setTimeout(() => {
-                currentMusic = (currentMusic + 1) % songs.length;
-                setMusic(currentMusic);
-                playMusic();
-            }, 2000); // Wait 2 seconds before trying the next song
-        }
-    }
-    
-    // Function to show error messages to the user
-    function showErrorMessage(message) {
-        console.error(message);
-        
-        // Create or update error message element
-        let errorElement = document.getElementById('player-error-message');
-        if (!errorElement) {
-            errorElement = document.createElement('div');
-            errorElement.id = 'player-error-message';
-            errorElement.style.color = 'red';
-            errorElement.style.padding = '10px';
-            errorElement.style.margin = '10px 0';
-            errorElement.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-            errorElement.style.borderRadius = '5px';
-            errorElement.style.textAlign = 'center';
-            
-            // Insert after the player controls
-            const playerControls = document.querySelector('.music-player');
-            if (playerControls) {
-                playerControls.parentNode.insertBefore(errorElement, playerControls.nextSibling);
-            } else {
-                document.body.appendChild(errorElement);
-            }
-        }
-        
-        errorElement.textContent = message;
-        
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-            errorElement.style.display = 'none';
-        }, 10000);
-    }
-
     function setMusic(i) {
-        try {
-            console.log('Songs array:', songs);  // Log the songs array
-            console.log('Setting song at index:', i);  // Log the index being set
-    
-            // Check if songs array is populated
-            if (songs.length === 0) {
-                throw new Error('No songs available to play. The songs array is empty.');
-            }
-    
-            // Check if the index is valid
-            if (i < 0 || i >= songs.length) {
-                throw new Error(`Invalid index: ${i}. Index must be between 0 and ${songs.length - 1}.`);
-            }
-    
-            const song = songs[i];
-    
-            // Check if the song object is valid
-            if (!song || !song.path || !song.name || !song.artist || !song.cover) {
-                throw new Error(`Song data is missing or incomplete at index ${i}. Please check the song object: ${JSON.stringify(song)}`);
-            }
-    
-            // Proceed with setting the song
-            seekBar.value = 0;
-            currentMusic = i;
-            
-            // Log the audio source URL for debugging
-            console.log('Setting audio source to:', song.path);
-            
-            // Clear any previous errors and event listeners
-            music.removeAttribute('crossorigin');
-            music.src = '';
-            
-            // Remove any previous event listeners to avoid duplicates
-            const clonedAudio = music.cloneNode(false);
-            music.parentNode.replaceChild(clonedAudio, music);
-            music = clonedAudio;
-            
-            // Add crossorigin attribute for S3 URLs
-            if (song.path.includes('amazonaws.com') || song.path.startsWith('/api/stream/')) {
-                music.setAttribute('crossorigin', 'anonymous');
-                console.log('Added crossorigin attribute for S3 URL');
-            }
-            
-            // Set the source
-            music.src = song.path;
-            console.log('Audio element src set to:', music.src);
-            
-            // Force a reload of the audio element
-            music.load();
-            console.log('Audio element reloaded');
-    
-            // Update UI elements
-            songName.textContent = song.name;
-            artistName.textContent = song.artist;
-            
-            // Log the cover image URL for debugging
-            console.log('Setting disk image to:', song.cover);
-            
-            // Handle S3 URLs for cover images
-            disk.style.backgroundImage = `url('${song.cover}')`;
-    
-            currentTime.textContent = '00:00';
-            musicDuration.textContent = 'Loading...';
+        // Check if the songs array is empty
+        if (songs.length === 0) {
+            throw new Error('No songs available to play. The songs array is empty.');
+        }
+        
+        // Validate the index
+        if (i < 0 || i >= songs.length) {
+            console.error(`Invalid song index: ${i}. Must be between 0 and ${songs.length - 1}`);
+            i = 0; // Default to the first song
+        }
+        
+        // Proceed with setting the song
+        const song = songs[i];
+        currentMusic = i;
+        
+        // Update the UI with the current song info
+        songName.textContent = song.name;
+        artistName.textContent = song.artist;
+        
+        // Log the cover image URL for debugging
+        console.log('Setting disk image to:', song.cover);
+        
+        // Handle S3 URLs for cover images
+        disk.style.backgroundImage = `url('${song.cover}')`;
+        
+        currentTime.textContent = '00:00';
+        musicDuration.textContent = 'Loading...';
 
-            attachAudioEventListeners();
-
-            // Try to play automatically when ready
-            music.play().catch(e => {
-                console.error('Error playing audio:', e);
-            });
-        } catch (error) {
-            console.error('Error in setMusic:', error.message);
-            alert('Error setting music: ' + error.message);
+        // Create a new audio element to avoid any issues with the previous one
+        const clonedAudio = document.createElement('audio');
+        clonedAudio.id = 'audio';
+        
+        // Copy event listeners from the old audio element
+        clonedAudio.onplay = music.onplay;
+        clonedAudio.onpause = music.onpause;
+        clonedAudio.ontimeupdate = music.ontimeupdate;
+        clonedAudio.onended = music.onended;
+        clonedAudio.onerror = music.onerror;
+        
+        // Replace the old audio element with the new one
+        music.parentNode.replaceChild(clonedAudio, music);
+        music = clonedAudio;
+        
+        // Attach event listeners to the new audio element
+        attachAudioEventListeners();
+        
+        // Add crossorigin attribute for S3 URLs
+        music.setAttribute('crossorigin', 'anonymous');
+        console.log('Added crossorigin attribute for S3 URL');
+        
+        // Set the audio source
+        if (song.path) {
+            // Load the audio from the stream URL
+            loadSong(song)
+                .then(success => {
+                    if (!success) {
+                        console.error('Failed to load audio from stream URL');
+                        handleAudioError(new Error('Failed to load audio from stream URL'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading audio:', error);
+                    handleAudioError(error);
+                });
+        } else {
+            console.error('Song path is undefined or empty');
+            handleAudioError(new Error('Song path is undefined or empty'));
+        }
+        
+        // Update the background color scheme based on the song
+        updateBackgroundScheme(song.colorScheme || getRandomColorScheme());
+        
+        // Update the visualizer color
+        if (song.visualizerColor) {
+            visualizerColor = song.visualizerColor;
+            console.log('Updated visualizer color:', visualizerColor);
         }
     }
 
@@ -378,40 +499,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Function to show error messages to the user
-    function showErrorMessage(message) {
-        console.error(message);
-        
-        // Create or update error message element
-        let errorElement = document.getElementById('player-error-message');
-        if (!errorElement) {
-            errorElement = document.createElement('div');
-            errorElement.id = 'player-error-message';
-            errorElement.style.color = 'red';
-            errorElement.style.padding = '10px';
-            errorElement.style.margin = '10px 0';
-            errorElement.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-            errorElement.style.borderRadius = '5px';
-            errorElement.style.textAlign = 'center';
+    function updateBackgroundScheme(indexOrScheme) {
+        // If it's a string (color scheme), we use it directly
+        if (typeof indexOrScheme === 'string') {
+            const musicPlayer = document.querySelector('.music-player');
+            const visualizerContainer = document.querySelector('.visualizer-container');
+            const newScheme = indexOrScheme;
+    
+            musicPlayer.classList.remove(...window.backgroundSchemes);
+            musicPlayer.classList.add(newScheme);
             
-            // Insert after the player controls
-            const playerControls = document.querySelector('.music-player');
-            if (playerControls) {
-                playerControls.parentNode.insertBefore(errorElement, playerControls.nextSibling);
-            } else {
-                document.body.appendChild(errorElement);
-            }
+            visualizerContainer.classList.remove(...window.backgroundSchemes);
+            visualizerContainer.classList.add(newScheme);
+        
+            console.log('Updating background scheme with scheme:', newScheme);
+            window.updateVisualizerColors(newScheme);
+            return;
         }
         
-        errorElement.textContent = message;
-        
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-            errorElement.style.display = 'none';
-        }, 10000);
-    }
-
-    function updateBackgroundScheme(index) {
+        // Otherwise, treat it as an index
+        const index = indexOrScheme;
         if (songs.length === 0 || !songs[index]) {
             console.error('No song available for the given index:', index);
             return; // Prevent errors if the song is undefined
@@ -419,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const musicPlayer = document.querySelector('.music-player');
         const visualizerContainer = document.querySelector('.visualizer-container');
         const newScheme = songs[index].colorScheme;
-
+    
         musicPlayer.classList.remove(...window.backgroundSchemes);
         musicPlayer.classList.add(newScheme);
         
@@ -429,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Updating background scheme for index:', index);
         console.log('New color scheme:', newScheme);
         window.updateVisualizerColors(newScheme);
-    };
+    }
 
     // Make updateBackgroundScheme globally accessible
     window.updateBackgroundScheme = updateBackgroundScheme;
@@ -487,6 +594,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setVolume(Math.min(1, music.volume + 0.1));
     });
 
+    // Add play button event listener
+    playBtn.addEventListener('click', () => {
+        console.log('Play button clicked');
+        togglePlayPause();
+    });
+
     music.addEventListener('volumechange', () => {
         console.log('Volume change event fired. New volume:', music.volume);
     });
@@ -518,6 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function togglePlayPause() {
+        console.log('Toggle play/pause called, current state:', music.paused ? 'paused' : 'playing');
         if (music.paused) {
             playMusic();
         } else {
@@ -527,6 +641,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePlayPauseButtonState() {
         playBtn.classList.toggle('pause', !music.paused);
+        // Make sure disk animation state matches audio state
+        if (music.paused) {
+            disk.classList.remove('play');
+        } else {
+            disk.classList.add('play');
+        }
+        console.log('Updated play/pause button state:', music.paused ? 'paused' : 'playing');
     }
 
     function playMusic() {
@@ -534,52 +655,75 @@ document.addEventListener('DOMContentLoaded', () => {
         if (audioContext.state === 'suspended') {
             audioContext.resume().then(() => {
                 actuallyPlayMusic();
-            }).catch(handleAudioError);
+            }).catch(error => {
+                console.error('Error resuming audio context:', error);
+                handleAudioError(music, music.src, error);
+            });
         } else {
             actuallyPlayMusic();
         }
     }
 
     function actuallyPlayMusic() {
-        try {
-            console.log('Attempting to play music...');
+        if (!music.src) {
+            console.error('No audio source set');
+            displayError('No audio source available for this song');
+            return;
+        }
+        
+        console.log(`Attempting to play audio from source: ${music.src}`);
+        
+        // Check if the URL is valid
+        if (music.src.startsWith('blob:') || 
+            music.src.includes('s3.') || 
+            music.src.includes('.netlify/functions/stream')) {
             
-            // Check if the audio source is set
-            if (!music.src) {
-                console.error('No audio source set');
-                return;
-            }
-            
-            console.log('Playing audio from source:', music.src);
-            
-            // Use the play() Promise API
+            // Valid source, attempt to play
             const playPromise = music.play();
             
             if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    console.log('Audio playback started successfully');
-                    disk.classList.add('play');
-                    playBtn.classList.add('pause');
-                    
-                    if (!isVisualizerStarted && window.onPlaybackStart) {
-                        window.onPlaybackStart();
-                        window.onAudioPlay();
-                        isVisualizerStarted = true;
-                    }
-                    
-                    // Initialize audio context if needed
-                    if (!audioContext) {
-                        initAudio();
-                    }
-                    
-                }).catch(error => {
-                    console.error('Error playing audio:', error);
-                    handleAudioError(error);
-                });
+                playPromise
+                    .then(() => {
+                        console.log('Audio playback started successfully');
+                        // Update UI for playing state
+                        updatePlayPauseButtonState();
+                        disk.classList.add('play');
+                        
+                        // Explicitly trigger particle system
+                        if (window.ParticleSystem && window.ParticleSystem.ensureParticlesRunning) {
+                            window.ParticleSystem.ensureParticlesRunning();
+                        }
+                        
+                        // Set global flags for particle system in main.js
+                        if (window.isPlaybackStarted !== undefined) {
+                            window.isPlaybackStarted = true;
+                        }
+                        if (window.isAudioPlaying !== undefined) {
+                            window.isAudioPlaying = true;
+                        }
+                        
+                        // Legacy callbacks for compatibility
+                        if (window.onAudioStart) {
+                            window.onAudioStart();
+                        }
+                        if (window.onPlaybackStart) {
+                            window.onPlaybackStart();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error playing audio:', error);
+                        displayError(`Playback error: ${error.message}`);
+                        // Reset UI for paused state
+                        updatePlayPauseButtonState();
+                        disk.classList.remove('play');
+                    });
             }
-        } catch (error) {
-            console.error('Exception in actuallyPlayMusic:', error);
-            handleAudioError(error);
+        } else {
+            console.error('Invalid audio source:', music.src);
+            displayError('Invalid audio source');
+            // Reset UI for paused state
+            updatePlayPauseButtonState();
+            disk.classList.remove('play');
         }
     }
 
@@ -587,6 +731,18 @@ document.addEventListener('DOMContentLoaded', () => {
         music.pause();
         updatePlayPauseButtonState();
         disk.classList.remove('play');
+        
+        // Set global flags for particle system in main.js
+        if (window.isAudioPlaying !== undefined) {
+            window.isAudioPlaying = false;
+        }
+        
+        // Explicitly stop particle system
+        if (window.ParticleSystem && window.ParticleSystem.clearParticles) {
+            window.ParticleSystem.clearParticles();
+        }
+        
+        // Legacy callbacks for compatibility
         if (window.onAudioStop) {
             window.onAudioStop();
         }
@@ -596,31 +752,73 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Music paused, volume:', music.volume);
     }
 
-    function handleAudioError(error) {
-        console.error('Audio playback error:', error);
-        // Implement additional error handling or user feedback here
+    function handleAudioError(audioElement, sourcePath, error) {
+        console.error('Audio playback error for source:', sourcePath, error);
+        
+        let errorMessage = `Unable to play "${songs[currentMusic]?.name || 'song'}".`;
+        
+        if (error) {
+            if (error.name === 'NotAllowedError') {
+                errorMessage += ' Browser blocked autoplay. Please interact with the page first.';
+            } else if (error.name === 'NotSupportedError') {
+                errorMessage += ' The audio format is not supported by your browser.';
+            } else if (error.name === 'AbortError') {
+                errorMessage += ' Playback was aborted.';
+            } else {
+                errorMessage += ` ${error.message || 'The audio file may be unavailable in S3 storage.'}`;
+            }
+        } else {
+            errorMessage += ' The audio file may be unavailable in S3 storage.';
+        }
+        
+        displayError(errorMessage);
+        
+        // Try to play the next song if available
+        if (songs.length > 1) {
+            console.log('Attempting to play next song...');
+            setTimeout(() => {
+                nextMusic();
+            }, 2000);
+        }
     }
 
-    playBtn.addEventListener('click', togglePlayPause);
-
-    document.addEventListener('keydown', e => {
-        if (e.code === 'Space') {
-            e.preventDefault();
-            togglePlayPause();
-        }
-    });
-
-    forwardBtn.addEventListener('click', () => {
+    function nextMusic() {
         currentMusic = (currentMusic + 1) % songs.length;
         setMusic(currentMusic);
         playMusic();
-    });
+    }
 
-    backwardsBtn.addEventListener('click', () => {
-        currentMusic = (currentMusic - 1 + songs.length) % songs.length;
-        setMusic(currentMusic);
-        playMusic();
-    });
+    function showErrorMessage(message) {
+        console.error(message);
+        
+        // Create or update error message element
+        let errorElement = document.getElementById('player-error-message');
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'player-error-message';
+            errorElement.style.color = 'red';
+            errorElement.style.padding = '10px';
+            errorElement.style.margin = '10px 0';
+            errorElement.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            errorElement.style.borderRadius = '5px';
+            errorElement.style.textAlign = 'center';
+            
+            // Insert after the player controls
+            const playerControls = document.querySelector('.music-player');
+            if (playerControls) {
+                playerControls.parentNode.insertBefore(errorElement, playerControls.nextSibling);
+            } else {
+                document.body.appendChild(errorElement);
+            }
+        }
+        
+        errorElement.textContent = message;
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+            errorElement.style.display = 'none';
+        }, 10000);
+    }
 
     function drawVisualizer() {
         requestAnimationFrame(drawVisualizer);
@@ -659,7 +857,6 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
     }
-
 
     const debouncedResize = debounce(() => {
         resizeCanvas();

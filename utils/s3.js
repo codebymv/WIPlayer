@@ -3,16 +3,16 @@ require('dotenv').config();
 
 // Configure AWS
 AWS.config.update({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    region: process.env.AWS_REGION
+    accessKeyId: process.env.WIPLAYER_AWS_KEY_ID,
+    secretAccessKey: process.env.WIPLAYER_AWS_SECRET,
+    region: process.env.WIPLAYER_AWS_REGION
 });
 
 const s3 = new AWS.S3();
 const bucketName = process.env.S3_BUCKET_NAME;
 
 // Get a signed URL for an S3 object
-function getSignedUrl(key, expirationSeconds = 3600) {
+function getSignedUrl(key, expirationSeconds = 3600, additionalParams = {}) {
     try {
         // Extract just the filename if it's a path
         const filename = key.split('/').pop();
@@ -44,7 +44,8 @@ function getSignedUrl(key, expirationSeconds = 3600) {
             Bucket: bucketName,
             Key: keyToUse,
             Expires: expirationSeconds,
-            ResponseContentType: contentType
+            ResponseContentType: additionalParams.ResponseContentType || contentType,
+            ...additionalParams
         };
         
         const url = s3.getSignedUrl('getObject', params);
@@ -62,7 +63,7 @@ function getPublicUrl(key) {
     // Make sure the key doesn't have a leading slash
     const cleanKey = key.startsWith('/') ? key.substring(1) : key;
     
-    return `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${cleanKey}`;
+    return `https://${bucketName}.s3.${process.env.WIPLAYER_AWS_REGION}.amazonaws.com/${cleanKey}`;
 }
 
 // Check if an object exists in the bucket

@@ -64,3 +64,5 @@ Desktop.ini
 !.vscode/extensions.json
 *.code-workspace
 .history/
+# Local Netlify folder
+.netlify

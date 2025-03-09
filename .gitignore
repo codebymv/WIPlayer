@@ -51,6 +51,13 @@ jspm_packages/
 # Mac files
 .DS_Store
 
+# Netlify
+.netlify
+
+# Batch files with secrets
+sync-env.bat
+*-env.bat
+
 # Windows files
 Thumbs.db
 ehthumbs.db
@@ -64,5 +71,3 @@ Desktop.ini
 !.vscode/extensions.json
 *.code-workspace
 .history/
-# Local Netlify folder
-.netlify

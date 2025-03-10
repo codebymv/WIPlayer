@@ -695,6 +695,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         updatePlayPauseButtonState();
                         disk.classList.add('play');
                         
+                        // Start the visualizer if not already started
+                        if (!isVisualizerStarted) {
+                            isVisualizerStarted = true;
+                            drawVisualizer();
+                            console.log('Frequency visualizer started');
+                        }
+                        
                         // Explicitly trigger particle system
                         if (window.ParticleSystem && window.ParticleSystem.ensureParticlesRunning) {
                             window.ParticleSystem.ensureParticlesRunning();
@@ -828,6 +835,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function drawVisualizer() {
         requestAnimationFrame(drawVisualizer);
+
+        // Make sure canvas is visible and properly sized
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+        canvas.style.opacity = '1';
 
         analyser.getByteFrequencyData(dataArray);
         updateAudioData(dataArray);

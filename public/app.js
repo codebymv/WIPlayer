@@ -87,6 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let songs = [];
 
+    // Set a timeout to ensure loading overlay is hidden even if song fetching takes too long
+    const loadingTimeout = setTimeout(() => {
+        console.log('Loading timeout reached, hiding overlay...');
+        hideLoadingOverlay();
+    }, 5000); // 5 seconds max loading time
+
     // Add this function to get a random color scheme
     function getRandomColorScheme() {
         return window.backgroundSchemes[Math.floor(Math.random() * window.backgroundSchemes.length)];
@@ -99,13 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`Error fetching songs: ${response.status} ${response.statusText}`);
-                console.error(`Response body: ${errorText}`);
-                throw new Error(`Failed to fetch songs: ${response.status} ${response.statusText}`);
+                throw new Error(`Failed to fetch songs: ${response.status} ${response.statusText}\n${errorText}`);
             }
             
             const data = await response.json();
-            console.log('Songs fetched successfully:', data);
+            console.log('Songs data received:', data);
+            
+            if (!data || !Array.isArray(data)) {
+                throw new Error('Invalid data format received from API');
+            }
+            
             return data;
         } catch (error) {
             console.error('Error fetching songs:', error);
@@ -115,30 +124,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayError(message) {
-        const errorContainer = document.getElementById('error-container') || createErrorContainer();
+        console.error(message);
+        const errorContainer = createErrorContainer();
         errorContainer.textContent = message;
-        errorContainer.style.display = 'block';
+        document.body.appendChild(errorContainer);
         
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            errorContainer.style.display = 'none';
-        }, 5000);
+        // Still hide the loading overlay even if there's an error
+        hideLoadingOverlay();
     }
 
     function createErrorContainer() {
         const container = document.createElement('div');
-        container.id = 'error-container';
         container.style.position = 'fixed';
         container.style.top = '20px';
         container.style.left = '50%';
         container.style.transform = 'translateX(-50%)';
         container.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
         container.style.color = 'white';
-        container.style.padding = '10px 20px';
+        container.style.padding = '15px 20px';
         container.style.borderRadius = '5px';
         container.style.zIndex = '1000';
-        container.style.display = 'none';
-        document.body.appendChild(container);
+        container.style.maxWidth = '80%';
+        container.style.textAlign = 'center';
         return container;
     }
 
@@ -262,73 +269,78 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
         console.log('Fetched songs:', data);
         
-        if (!data || data.length === 0) {
-            console.error('No songs available');
-            throw new Error('No songs available');
-        }
-        
-        // Validate song paths
-        data.forEach((song, index) => {
-            console.log(`Song ${index}: ${song.name}, Path: ${song.path}`);
-            if (!song.path) {
-                console.error(`Song ${index} (${song.name}) has no path`);
-            }
-        });
-        
-        // Update the stream path to work with Netlify Functions
-        console.log('Processing songs for S3 streaming...');
-        const songsWithS3Urls = data.map(song => {
-            const songObj = song;
+        if (data && data.length > 0) {
+            songs = data;
+            console.log('Songs array after fetch:', songs);
             
-            // Update the path to use the Netlify Functions streaming endpoint
-            if (songObj.path && !songObj.path.startsWith('/.netlify/functions/stream/')) {
-                // If it's using the old /api/stream/ format, update it
-                if (songObj.path.startsWith('/api/stream/')) {
-                    songObj.path = songObj.path.replace('/api/stream/', '/.netlify/functions/stream/');
-                } else {
-                    songObj.path = `/.netlify/functions/stream/${songObj.path}`;
-                }
-                console.log(`Converted path to: ${songObj.path}`);
-            }
-            
-            return songObj;
-        });
-        
-        songs = songsWithS3Urls.map((song, index) => {
-            // Always assign a new random color scheme, except for the first song
-            if (index === 0) {
-                song.colorScheme = 'background-scheme-1';
-            } else {
-                song.colorScheme = getRandomColorScheme();
-            }
-            return song;
-        });
-        
-        // Make songs available globally
-        window.songs = songs;
-        
-        // Dispatch a custom event to notify that songs are loaded
-        const songsLoadedEvent = new Event('songsLoaded');
-        window.dispatchEvent(songsLoadedEvent);
-        console.log('Dispatched songsLoaded event');
-        
-        if (songs.length > 0) {
-            console.log('Setting initial song...');
+            // Set the first song
             setMusic(0);
+            
+            // Set up event listeners for the buttons
+            playBtn.addEventListener('click', togglePlayPause);
+            forwardBtn.addEventListener('click', nextMusic);
+            backwardsBtn.addEventListener('click', () => {
+                if (currentMusic > 0) {
+                    setMusic(currentMusic - 1);
+                } else {
+                    setMusic(songs.length - 1);
+                }
+            });
+            
+            // Set up event listeners for audio element
+            attachAudioEventListeners();
+            
+            // Set up the state buttons
+            const state1 = document.getElementById('state1');
+            const state2 = document.getElementById('state2');
+            const state3 = document.getElementById('state3');
+            
+            if (state1) state1.addEventListener('click', () => updateBackgroundScheme('background-scheme-1'));
+            if (state2) state2.addEventListener('click', () => updateBackgroundScheme('background-scheme-2'));
+            if (state3) state3.addEventListener('click', () => updateBackgroundScheme('background-scheme-3'));
+            
+            // Initialize with a random color scheme
+            updateBackgroundScheme(getRandomColorScheme());
+            
+            // Initialize audio context
+            initAudio();
+            
+            // Set up canvas resize
+            resizeCanvas();
+            window.addEventListener('resize', debouncedResize);
+            
+            // Hide loading overlay when everything is ready
+            setTimeout(hideLoadingOverlay, 1000); // Add a small delay to ensure everything is loaded
         } else {
-            console.error('No songs available to play.');
-            alert('No songs available to play.');
+            displayError('No songs available. Please check your connection and try again.');
         }
-        
-        // Log the assigned color schemes for debugging
-        songs.forEach((song, index) => {
-            console.log(`Song ${index + 1}: ${song.name} - Scheme: ${song.colorScheme}`);
-        });
     })
     .catch(error => {
-        console.error('Error fetching songs:', error);
-        alert('Error loading songs: ' + error.message);
+        console.error('Error in song processing:', error);
+        displayError(`Error loading music: ${error.message}`);
     });
+
+    // Function to hide the loading overlay
+    function hideLoadingOverlay() {
+        console.log('Hiding loading overlay...');
+        
+        // Clear the loading timeout if it exists
+        if (loadingTimeout) {
+            clearTimeout(loadingTimeout);
+        }
+        
+        document.body.classList.add('app-ready');
+        
+        // Optional: Remove the overlay completely after transition
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.addEventListener('transitionend', () => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            });
+        }
+    }
 
     function setMusic(i) {
         // Check if the songs array is empty
@@ -592,12 +604,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     volumeUp.addEventListener('click', () => {
         setVolume(Math.min(1, music.volume + 0.1));
-    });
-
-    // Add play button event listener
-    playBtn.addEventListener('click', () => {
-        console.log('Play button clicked');
-        togglePlayPause();
     });
 
     music.addEventListener('volumechange', () => {
